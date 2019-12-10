@@ -43,3 +43,21 @@ def repeatmap(x,y,l,a,n=1, nosave=False):
         X = x
         Y = y
     return X,Y
+
+def GSchmidt(A):
+    """Performs Gramm-Schmidt Orthogonalisation"""
+    
+    u = A[:,0]
+    v = A[:,1]
+    
+    A[:,1] = v - proj(u,v)
+    
+    A[:,0] = u/np.linalg.norm(u)
+    A[:,1] = A[:,1]/np.linalg.norm(A[:,1])
+    
+    return A
+    
+    
+def proj(u,v):
+    """projects v onto u"""
+    return (np.dot(u,v)/np.dot(u,u))*u
