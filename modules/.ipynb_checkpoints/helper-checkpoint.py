@@ -36,10 +36,13 @@ def repeatmap(x,y,l,a,n=1, nosave=False):
             x,y = maping(x,y,l,a)
             X[i] = x
             Y[i] = y
-            
+            if i%100==0:
+                update_progress(i/n)
     if nosave:
         for i in range(1,int(n)):
             x,y = maping(x,y,l,a)
+            if i%100==0:
+                update_progress(i/n)
         X = x
         Y = y
     return X,Y
@@ -61,3 +64,46 @@ def GSchmidt(A):
 def proj(u,v):
     """projects v onto u"""
     return (np.dot(u,v)/np.dot(u,u))*u
+
+
+
+
+def vectorGSchmidt(A):
+    """Gramm Schmidt Orthognalisation"""
+    u = A[:,0]
+    v = A[:,1]
+    
+    def _proj(u,v):
+        """projects v onto u"""
+        return (np.einsum('i...,i...->...',u,v)/np.einsum('i...,i...->...',u,u))*u
+    
+    v = v - _proj(u,v)
+    
+    u = u/np.linalg.norm(u, axis=0)
+    v = v/np.linalg.norm(v, axis=0)
+    
+    
+    A[:,0] = u
+    A[:,1] = v
+    
+    return A
+
+import time, sys
+from IPython.display import clear_output
+
+def update_progress(progress):
+    bar_length = 20
+    if isinstance(progress, int):
+        progress = float(progress)
+    if not isinstance(progress, float):
+        progress = 0
+    if progress < 0:
+        progress = 0
+    if progress >= 1:
+        progress = 1
+
+    block = int(round(bar_length * progress))
+
+    clear_output(wait = True)
+    text = "Progress: [{0}] {1:.1f}%".format( "#" * block + "-" * (bar_length - block), progress * 100)
+    print(text)
