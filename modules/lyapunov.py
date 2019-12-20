@@ -156,7 +156,11 @@ class system:
 
         return A
     
-    def plot_Lyapunov_1(self, savefig=True):
+    def plot_Lyapunov_1(self, savefig=True, figname=None):
+        
+        if figname == None:
+            figname = 'first_lyapunov'
+        
         
         lyapunov_1 = self.lyapunov_1
         x = self.x
@@ -167,12 +171,12 @@ class system:
         
         fig, ax = plt.subplots()
         divnorm = colors.DivergingNorm(vmin=lyapunov_1.min(axis=0).min(axis=0).min(), vcenter=0, vmax=lyapunov_1.max())
-        plt.contourf(a[0,0,0,:],l[0,0,:,0],lyapunov_1.min(axis=0).min(axis=0), levels = 100,cmap = 'RdBu_r', norm=divnorm)
+        plt.contourf(a[0,0,:,:],l[0,0,:,:],lyapunov_1.min(axis=0).min(axis=0), levels = 100,cmap = 'RdBu_r', norm=divnorm)
         cbar = plt.colorbar()
         for i in range(lyapunov_1.shape[0]):
             for j in range(lyapunov_1.shape[1]):
-                plt.contour(a[0,0,0,:],l[0,0,:,0],lyapunov_1[i,j], levels = [0,], colors=('k',),alpha=0.1)
-        plt.contour(a[0,0,0,:],l[0,0,:,0],lyapunov_1.max(axis=0).max(axis=0), levels = [0,], colors=('blue',),alpha=1)
+                plt.contour(a[0,0,:,:],l[0,0,:,:],lyapunov_1[i,j], levels = [0,], colors=('k',),alpha=0.1)
+        contour = plt.contour(a[0,0,:,:],l[0,0,:,:],lyapunov_1.max(axis=0).max(axis=0), levels = [0,], colors=('blue',),alpha=1)
         plt.title('The first Lyapunov exponent')
         plt.ylabel('$\lambda$')
         plt.xlabel('a')
@@ -181,11 +185,16 @@ class system:
         ax.set_ylim([l.min(),l.max()])
         ax.set_xlim([a.min(),a.max()])
         if savefig:
-            plt.savefig('images/first_lyapunov.pdf')
+            plt.savefig(f'images/{figname}.pdf')
         plt.show()
         
+        return contour.allsegs[0][0]
         
-    def plot_Lyapunov_2(self):
+        
+    def plot_Lyapunov_2(self, savefig=True, figname=None):
+        
+        if figname == None:
+            figname = 'sum_of_first_2_lyapunov'
         
         lyapunov_2 = self.lyapunov_2
         x = self.x
@@ -216,19 +225,104 @@ class system:
 
         ax.set_ylim([l.min(),l.max()])
         ax.set_xlim([a.min(),a.max()])
-        plt.savefig('images/sum_of_first_2_lyapunov.pdf')
+        if savefig:
+            plt.savefig(f'images/{figname}.pdf')
         plt.show()
         
+        return dat0
         
-    def new_coords(self, da=0.01):
+        
+    def new_coords(self, da=0.01, mode=2):
         """Takes the lyapunov exponents and identifies new coordinates for new systems which could contain a 0 value"""
-        
-        indicies = []
-        a1 = np.zeros(self.a.shape)
-        # iterating over lambda
-        for i in range(self.lyapunov_2.shape[2]):
-            j = np.argwhere(np.diff(np.sign(self.lyapunov_2.max(axis=0).max(axis=0)[i,:])))
-            indicies += [[i,j[0,0]]]
-            a1[:,:,i,:] = np.linspace(self.a[0,0,0,j[0,0]]-5*da,self.a[0,0,0,j[0,0]]+5*da,self.a.shape[-1])
+        if mode == 2:
+            indicies = []
+            a1 = np.empty(self.a.shape)
+            # iterating over lambda
+            for i in range(self.lyapunov_2.shape[2]):
+                j = np.argwhere(np.diff(np.sign(self.lyapunov_2.max(axis=0).max(axis=0)[i,:])))
+                
+                if j!=[]:
+                    indicies += [[i,j[0,0]]]
+                    a1[:,:,i,:] = np.linspace(self.a[0,0,0,j[0,0]]-5*da,self.a[0,0,0,j[0,0]]+5*da,self.a.shape[-1])
+            
+        if mode == 1:
+            indicies = []
+            a1 = np.empty(self.a.shape)
+            # iterating over lambda
+            for i in range(self.lyapunov_1.shape[2]):
+                j = np.argwhere(np.diff(np.sign(self.lyapunov_1.max(axis=0).max(axis=0)[i,:])))
+                if j!=[]:
+                    indicies += [[i,j[0,0]]]
+                    a1[:,:,i,:] = np.linspace(self.a[0,0,0,j[0,0]]-5*da,self.a[0,0,0,j[0,0]]+5*da,self.a.shape[-1])
             
         return a1
+    
+    
+#     def savedata(self, filename=None):
+        
+#         if filename == None:
+#             filename = 'wild_chaos'
+            
+#         indicies = []
+#         alist = []
+#         llist = []
+#         # iterating over lambda
+#         for i in range(self.lyapunov_2.shape[2]):
+#             j = np.argwhere(np.diff(np.sign(self.lyapunov_2.max(axis=0).max(axis=0)[i,:])))
+#             print(self.a)
+#             if j!=[]:
+#                 indicies += [[i,j[0,0]]]
+#                 alist += [self.a[0,0,0,j[0,0]]] 
+#                 llist += [self.l[0,0,i,0]]
+#         output = np.array([alist,llist])
+#         np.savetxt(f'data/{filename}.dat', output.T, delimiter='   ')
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+def plot_multiLyapunov(systems, mode=2, savefig=True, figname=None):
+    """Plots multiple lyapunov exponents on the same plot. This gets around the issue of having multiple """
+    if mode == 2:
+        print(systems)
+#         divnorm = colors.DivergingNorm(vmin=max([np.nanmin(np.nanmax(np.nanmax(system.lyapunov_2, axis=0), axis=0)) for system in systems]), vcenter=0, vmax=max[np.nanmax(system.lyapunov_2) for system in systems])
+        if figname == None:
+            figname = 'sum_of_first_2_lyapunov'
+        
+        fig, ax = plt.subplots()
+        for system in systems:
+
+            lyapunov_2 = system.lyapunov_2
+            x = system.x
+            y = system.y
+            l = system.l
+            a = system.a
+
+
+
+            plt.contourf(a[0,0,:,:],l[0,0,:,:],np.nanmax(np.nanmax(lyapunov_2, axis=0), axis=0), levels = 100, cmap = 'RdBu_r')
+#                          , norm=divnorm)
+            for i in range(lyapunov_2.shape[0]):
+                for j in range(lyapunov_2.shape[1]):
+                    plt.contour(a[0,0,:,:],l[0,0,:,:],lyapunov_2[i,j], levels = [0,], colors=('k',),alpha=0.1)
+            lyap_sum = plt.contour(a[0,0,:,:],l[0,0,:,:],lyapunov_2.max(axis=0).max(axis=0), levels = [0,], colors=('blue',),alpha=1)
+
+#         cbar = plt.colorbar()
+        plt.plot(wild_chaos[:,0],wild_chaos[:,1],'--r',lw=3)
+        plt.title('Sum of the first 2 Lyapunov exponents ')
+        plt.ylabel('$\lambda$')
+        plt.xlabel('a')
+#         cbar.ax.set_ylabel('Sum of the first 2 Lyapunov exponents')
+
+        ax.set_ylim([l.min(),l.max()])
+        ax.set_xlim([a.min(),a.max()])
+        if savefig:
+            plt.savefig(f'images/{figname}.pdf')
+        plt.show()
