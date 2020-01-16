@@ -55,6 +55,9 @@ class system:
         J[...,1,0] = 2*y*x**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*y/(x**2+y**2)-4*x**2*y/(x**2+y**2)**2)
 
         J[...,1,1] = 2*x*y**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2)-4*y**2*x/(x**2+y**2)**2)
+        
+        
+        J[J==np.nan] = 0
 
         return J
     
@@ -171,12 +174,13 @@ class system:
         
         fig, ax = plt.subplots()
         divnorm = colors.DivergingNorm(vmin=lyapunov_1.min(axis=0).min(axis=0).min(), vcenter=0, vmax=lyapunov_1.max())
+        divnorm = colors.DivergingNorm(vmin = -10, vcenter=0, vmax=10)
         plt.contourf(a[0,0,:,:],l[0,0,:,:],lyapunov_1.min(axis=0).min(axis=0), levels = 100,cmap = 'RdBu_r', norm=divnorm)
         cbar = plt.colorbar()
         for i in range(lyapunov_1.shape[0]):
             for j in range(lyapunov_1.shape[1]):
                 plt.contour(a[0,0,:,:],l[0,0,:,:],lyapunov_1[i,j], levels = [0,], colors=('k',),alpha=0.1)
-        plt.contour(a[0,0,:,:],l[0,0,:,:],lyapunov_1.max(axis=0).max(axis=0), levels = [0,], colors=('blue',),alpha=1)
+        contour = plt.contour(a[0,0,:,:],l[0,0,:,:],lyapunov_1.max(axis=0).max(axis=0), levels = [0,], colors=('blue',),alpha=1)
         plt.title('The first Lyapunov exponent')
         plt.ylabel('$\lambda$')
         plt.xlabel('a')
@@ -187,6 +191,8 @@ class system:
         if savefig:
             plt.savefig(f'images/{figname}.pdf')
         plt.show()
+        
+        return contour.allsegs[0][0]
         
         
     def plot_Lyapunov_2(self, savefig=True, figname=None):
@@ -204,6 +210,7 @@ class system:
         fig, ax = plt.subplots()
 
         divnorm = colors.DivergingNorm(vmin=np.nanmin(np.nanmax(np.nanmax(lyapunov_2, axis=0), axis=0)), vcenter=0, vmax=np.nanmax(lyapunov_2))
+        divnorm = colors.DivergingNorm(vmin = -10, vcenter=0, vmax=10)
         plt.contourf(a[0,0,:,:],l[0,0,:,:],np.nanmax(np.nanmax(lyapunov_2, axis=0), axis=0), levels = 100, cmap = 'RdBu_r', norm=divnorm)
         cbar = plt.colorbar()
 
@@ -226,6 +233,8 @@ class system:
         if savefig:
             plt.savefig(f'images/{figname}.pdf')
         plt.show()
+        
+        return dat0
         
         
     def new_coords(self, da=0.01, mode=2):
@@ -254,24 +263,24 @@ class system:
         return a1
     
     
-    def savedata(self, filename=None):
+#     def savedata(self, filename=None):
         
-        if filename == None:
-            filename = 'wild_chaos'
+#         if filename == None:
+#             filename = 'wild_chaos'
             
-        indicies = []
-        alist = []
-        llist = []
-        # iterating over lambda
-        for i in range(self.lyapunov_2.shape[2]):
-            j = np.argwhere(np.diff(np.sign(self.lyapunov_2.max(axis=0).max(axis=0)[i,:])))
-            print(self.a)
-            if j!=[]:
-                indicies += [[i,j[0,0]]]
-                alist += [self.a[0,0,0,j[0,0]]] 
-                llist += [self.l[0,0,i,0]]
-        output = np.array([alist,llist])
-        np.savetxt(f'data/{filename}.dat', output.T, delimiter='   ')
+#         indicies = []
+#         alist = []
+#         llist = []
+#         # iterating over lambda
+#         for i in range(self.lyapunov_2.shape[2]):
+#             j = np.argwhere(np.diff(np.sign(self.lyapunov_2.max(axis=0).max(axis=0)[i,:])))
+#             print(self.a)
+#             if j!=[]:
+#                 indicies += [[i,j[0,0]]]
+#                 alist += [self.a[0,0,0,j[0,0]]] 
+#                 llist += [self.l[0,0,i,0]]
+#         output = np.array([alist,llist])
+#         np.savetxt(f'data/{filename}.dat', output.T, delimiter='   ')
     
     
     

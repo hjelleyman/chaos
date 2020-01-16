@@ -55,6 +55,9 @@ class system:
         J[...,1,0] = 2*y*x**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*y/(x**2+y**2)-4*x**2*y/(x**2+y**2)**2)
 
         J[...,1,1] = 2*x*y**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2)-4*y**2*x/(x**2+y**2)**2)
+        
+        
+        J[J==np.nan] = 0
 
         return J
     
@@ -170,7 +173,8 @@ class system:
         
         
         fig, ax = plt.subplots()
-        divnorm = colors.DivergingNorm(vmin=lyapunov_1.min(axis=0).min(axis=0).min(), vcenter=0, vmax=lyapunov_1.max())
+#         divnorm = colors.DivergingNorm(vmin=lyapunov_1.min(axis=0).min(axis=0).min(), vcenter=0, vmax=lyapunov_1.max())
+        divnorm = colors.DivergingNorm(vmin = -10, vcenter=0, vmax=10)
         plt.contourf(a[0,0,:,:],l[0,0,:,:],lyapunov_1.min(axis=0).min(axis=0), levels = 100,cmap = 'RdBu_r', norm=divnorm)
         cbar = plt.colorbar()
         for i in range(lyapunov_1.shape[0]):
@@ -206,6 +210,7 @@ class system:
         fig, ax = plt.subplots()
 
         divnorm = colors.DivergingNorm(vmin=np.nanmin(np.nanmax(np.nanmax(lyapunov_2, axis=0), axis=0)), vcenter=0, vmax=np.nanmax(lyapunov_2))
+        divnorm = colors.DivergingNorm(vmin = -10, vcenter=0, vmax=10)
         plt.contourf(a[0,0,:,:],l[0,0,:,:],np.nanmax(np.nanmax(lyapunov_2, axis=0), axis=0), levels = 100, cmap = 'RdBu_r', norm=divnorm)
         cbar = plt.colorbar()
 
