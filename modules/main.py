@@ -1,12 +1,16 @@
 """
 """
-from modules.helper import *
-import modules.lyapunov as lyp
+from helper import *
+import lyapunov as lyp
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import xarray as xr
+import itertools
+
+import matplotlib._color_data as mcd
+xkcd = list(mcd.XKCD_COLORS.values())
 
 tolerence = 1e-1
 imagefolder = 'images/'
@@ -20,20 +24,39 @@ def main():
     lmax = 1
     da = 0.01
     dl = 0.01
-    ablocks = 10
-    lblocks = 10
+    ablocks = 20
+    lblocks = 20
     
     l = np.arange(lmin,lmax,dl)
     a = np.arange(amin,amax,da)
     
-    save_initial_coditions_to_file(x,y,l,a)
-    plot_initial_conditions(*np.meshgrid(x,y,l,a))
+    
+    lyapunov_1 = xr.DataArray(np.zeros([len(x),len(y),len(l),len(a)]),coords={'x':x,'y':y,'l':l,'a':a}, dims = ['x', 'y', 'l', 'a'])
+    lyapunov_2 = xr.DataArray(np.zeros([len(x),len(y),len(l),len(a)]),coords={'x':x,'y':y,'l':l,'a':a}, dims = ['x', 'y', 'l', 'a'])
+    
+    n_transient = 1000
+    n_attractor = 1000
+#     save_initial_coditions_to_file(x,y,l,a)
+#     plot_initial_conditions(*np.meshgrid(x,y,l,a))
     
     lblocked, ablocked = block_la(l,a,lblocks,ablocks)
             
+    llength = (a.max()-a.min())/(l.max()-l.min())*5
+    alength = (l.max()-l.min())/(a.max()-a.min())*5
+
+    for lblock,ablock in list(itertools.product(lblocked,ablocked))[:10]:
         
-#     for lblock,ablock in zip(lblocked,ablocked):
-        
+        n_transient = 1000
+        n_attractor = 100
+        x,y,lblock,ablock = np.meshgrid(x,y,lblock,ablock)
+
+
+        system = lyp.system(x,y,lblock,ablock,n_transient,n_attractor)
+        system.calcLyapunov()
+        lyapunov_1.loc[x[:,0,0,0],y[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_1
+        lyapunov_2.loc[x[:,0,0,0],y[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_2
+        system = None
+    return (lyapunov_1,lyapunov_2)
         
         
 def plot_initial_conditions(x,y,l,a):
