@@ -1,7 +1,9 @@
 """
 """
-from helper import *
-import lyapunov as lyp
+from modules.helper import *
+import modules.lyapunov as lyp
+# from helper import *
+# import lyapunov as lyp
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,8 +36,8 @@ def main():
     lyapunov_1 = xr.DataArray(np.zeros([len(x),len(y),len(l),len(a)]),coords={'x':x,'y':y,'l':l,'a':a}, dims = ['x', 'y', 'l', 'a'])
     lyapunov_2 = xr.DataArray(np.zeros([len(x),len(y),len(l),len(a)]),coords={'x':x,'y':y,'l':l,'a':a}, dims = ['x', 'y', 'l', 'a'])
     
-    n_transient = 1000
-    n_attractor = 1000
+    n_transient = 10000
+    n_attractor = 10000
 #     save_initial_coditions_to_file(x,y,l,a)
 #     plot_initial_conditions(*np.meshgrid(x,y,l,a))
     
@@ -43,19 +45,19 @@ def main():
             
     llength = (a.max()-a.min())/(l.max()-l.min())*5
     alength = (l.max()-l.min())/(a.max()-a.min())*5
-
-    for lblock,ablock in list(itertools.product(lblocked,ablocked))[:10]:
+    i = 0
+    for lblock,ablock in list(itertools.product(lblocked,ablocked))[:]:
+        i += 1
         
-        n_transient = 1000
-        n_attractor = 100
-        x,y,lblock,ablock = np.meshgrid(x,y,lblock,ablock)
+        xi,yi,lblock,ablock = np.meshgrid(x,y,lblock,ablock)
 
 
-        system = lyp.system(x,y,lblock,ablock,n_transient,n_attractor)
+        system = lyp.system(xi,yi,lblock,ablock,n_transient,n_attractor)
         system.calcLyapunov()
-        lyapunov_1.loc[x[:,0,0,0],y[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_1
-        lyapunov_2.loc[x[:,0,0,0],y[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_2
+        lyapunov_1.loc[xi[:,0,0,0],yi[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_1
+        lyapunov_2.loc[xi[:,0,0,0],yi[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_2
         system = None
+        print(f'{i}/{lblocks*ablocks}')
     return (lyapunov_1,lyapunov_2)
         
         

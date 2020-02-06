@@ -41,7 +41,9 @@ class system:
     def maping(self):
         """Applies one itteration of the map."""
         z = self.x + self.y*1j
+        z1 = z.copy()
         z1 = (1-self.l+self.l*np.abs(z)**self.a)*((z)/(np.abs(z)))**2 + 1
+        z1[z == 0] = 0
         return np.real(z1), np.imag(z1)
     
     def jacobian(self,x,y,l,a):
