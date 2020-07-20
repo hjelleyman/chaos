@@ -17,17 +17,9 @@ xkcd = list(mcd.XKCD_COLORS.values())
 tolerence = 1e-1
 imagefolder = 'images/'
 
-def main():
+def main(amin = 0.7, amax = 2, lmin = 0.1, lmax = 1, da = 0.01, dl =0.01, ablocks = 20, lblocks = 20):
     x = np.linspace(-10,10,10)
     y = np.linspace(-10,10,10)
-    amin = 0.7
-    amax = 2
-    lmin = 0.1
-    lmax = 1
-    da = 0.01
-    dl = 0.01
-    ablocks = 20
-    lblocks = 20
     
     l = np.arange(lmin,lmax,dl)
     a = np.arange(amin,amax,da)
@@ -43,10 +35,11 @@ def main():
     
     lblocked, ablocked = block_la(l,a,lblocks,ablocks)
             
-    llength = (a.max()-a.min())/(l.max()-l.min())*5
-    alength = (l.max()-l.min())/(a.max()-a.min())*5
+    # llength = (a.max()-a.min())/(l.max()-l.min())*5
+    # alength = (l.max()-l.min())/(a.max()-a.min())*5
     i = 0
     for lblock,ablock in list(itertools.product(lblocked,ablocked))[:]:
+        t0 = time.time()
         i += 1
         
         xi,yi,lblock,ablock = np.meshgrid(x,y,lblock,ablock)
@@ -54,10 +47,10 @@ def main():
 
         system = lyp.system(xi,yi,lblock,ablock,n_transient,n_attractor)
         system.calcLyapunov()
-        lyapunov_1.loc[xi[:,0,0,0],yi[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_1
-        lyapunov_2.loc[xi[:,0,0,0],yi[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_2
+        lyapunov_1.loc[yi[:,0,0,0],xi[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_1
+        lyapunov_2.loc[yi[:,0,0,0],xi[0,:,0,0],lblock[0,0,:,0],ablock[0,0,0,:]] = system.lyapunov_2
         system = None
-        print(f'{i}/{lblocks*ablocks}')
+        print(f'{i}/{lblocks*ablocks} in {time.time()-t0:.2f}')
     return (lyapunov_1,lyapunov_2)
         
         

@@ -77,17 +77,21 @@ class system:
             X[0] = self.x
             Y[0] = self.y
 
+            t = time.time()
             for i in range(1,int(n)):
                 self.x,self.y = self.maping()
                 X[i] = self.x
                 Y[i] = self.y
                 if i%(n//10)==0:
-                    print('{:.0f}% done iterating'.format(i/n*100))
+                    print('{:.0f}% done iterating'.format(i/n*100, time.time()-t))
+                    t = time.time()
         if nosave:
+            t = time.time()
             for i in range(1,int(n)):
                 self.x,self.y = self.maping()
                 if i%(n//10)==0:
-                    print('{:.0f}% done iterating'.format(i/n*100))
+                    print('{:.0f}% done iterating'.format(i/n*100, time.time()-t))
+                    t = time.time()
             X = x
             Y = y
         return X,Y
@@ -114,6 +118,7 @@ class system:
         first_exponent   = np.zeros([n_attractor, *list(E.shape)[2:]])
         sum_of_exponents = np.zeros([n_attractor, *list(E.shape)[2:]])
 
+        start = time.time()
         # Iterating over given time
         for t in range(n_attractor):
 
@@ -132,7 +137,8 @@ class system:
 
             # Progress Bar
             if t%(n_attractor//10)==0:
-                print('{:.0f}% done iterating'.format(t/n_attractor*100))
+                print('{:.0f}% done iterating in {:.2f}s'.format(t/n_attractor*100, time.time()-start))
+                start = time.time()
 
         self.lyapunov_1 = np.mean(np.log(first_exponent), axis=0)
         self.lyapunov_2 = np.mean(np.log(sum_of_exponents), axis=0)   
