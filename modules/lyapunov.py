@@ -5,11 +5,22 @@ import xarray as xr
 import time
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
+from numba import njit
+
 
 
 chaos = np.loadtxt('data/chaos_al.dat')
 
 wild_chaos = np.loadtxt('data/wildchaos_al.dat')
+
+@njit(parallel=True)
+def _maping(x,y,l,a):
+    """Applies one itteration of the map."""
+    z = x + y*1j
+    z1 = z.copy()
+    z1 = (1-l+l*np.abs(z)**a)*((z)/(np.abs(z)))**2 + 1
+    # z1[z == 0] = 0
+    return np.real(z1), np.imag(z1)
 
 
 class system:
@@ -37,14 +48,15 @@ class system:
         self.J = self.jacobian(self.X_attractor,self.Y_attractor,self.l,self.a)
         print('System set up for analysis')
 
-    
+    # def maping(self):
+    #     """Applies one itteration of the map."""
+    #     z = self.x + self.y*1j
+    #     z1 = z.copy()
+    #     z1 = (1-self.l+self.l*np.abs(z)**self.a)*((z)/(np.abs(z)))**2 + 1
+    #     z1[z == 0] = 0
+    #     return np.real(z1), np.imag(z1)
     def maping(self):
-        """Applies one itteration of the map."""
-        z = self.x + self.y*1j
-        z1 = z.copy()
-        z1 = (1-self.l+self.l*np.abs(z)**self.a)*((z)/(np.abs(z)))**2 + 1
-        z1[z == 0] = 0
-        return np.real(z1), np.imag(z1)
+        return _maping(self.x,self.y,self.l,self.a)
     
     def jacobian(self,x,y,l,a):
         """Computes the Jacobian of the map."""

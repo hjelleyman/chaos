@@ -17,7 +17,7 @@ xkcd = list(mcd.XKCD_COLORS.values())
 tolerence = 1e-1
 imagefolder = 'images/'
 
-def main(amin = 0.7, amax = 2, lmin = 0.1, lmax = 1, da = 0.01, dl =0.01, ablocks = 20, lblocks = 20):
+def main(amin = 0.7, amax = 2, lmin = 0.1, lmax = 1, da = 0.01, dl =0.01, ablocks = 20, lblocks = 20, n_transient = 100000, n_attractor = 100000):
     x = np.linspace(-10,10,10)
     y = np.linspace(-10,10,10)
     
@@ -28,8 +28,8 @@ def main(amin = 0.7, amax = 2, lmin = 0.1, lmax = 1, da = 0.01, dl =0.01, ablock
     lyapunov_1 = xr.DataArray(np.zeros([len(x),len(y),len(l),len(a)]),coords={'x':x,'y':y,'l':l,'a':a}, dims = ['x', 'y', 'l', 'a'])
     lyapunov_2 = xr.DataArray(np.zeros([len(x),len(y),len(l),len(a)]),coords={'x':x,'y':y,'l':l,'a':a}, dims = ['x', 'y', 'l', 'a'])
     
-    n_transient = 10000
-    n_attractor = 10000
+    n_transient = int(n_transient)
+    n_attractor = int(n_attractor)
 #     save_initial_coditions_to_file(x,y,l,a)
 #     plot_initial_conditions(*np.meshgrid(x,y,l,a))
     
