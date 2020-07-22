@@ -5,15 +5,15 @@ import xarray as xr
 import time
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
-from numba import njit
-
+from numba import njit, cuda
+import cupy as cp
 
 
 chaos = np.loadtxt('data/chaos_al.dat')
 
 wild_chaos = np.loadtxt('data/wildchaos_al.dat')
 
-@njit(parallel=True)
+@njit(parallel=True,fastmath=True)
 def _maping(x,y,l,a):
     """Applies one itteration of the map."""
     z = x + y*1j
@@ -21,6 +21,28 @@ def _maping(x,y,l,a):
     z1 = (1-l+l*np.abs(z)**a)*((z)/(np.abs(z)))**2 + 1
     # z1[z == 0] = 0
     return np.real(z1), np.imag(z1)
+
+@njit(fastmath=True)
+def _repeatmap_save(x,y,l,a, n,X,Y):
+    X[0] = x
+    Y[0] = y
+    for i in range(1,int(n)):
+        x,y = _maping(x,y,l,a)
+        X[i] = x
+        Y[i] = y
+    newx = X
+    newy = Y
+    return newx,newy
+
+@njit(fastmath=True)
+def _repeatmap_nosave(x,y,l,a, n):
+    for i in range(1,int(n)):
+        x,y = _maping(x,y,l,a)
+    newx = x
+    newy = y
+    return newx,newy
+
+
 
 
 class system:
@@ -83,29 +105,14 @@ class system:
             l = self.l
             
         if not nosave:
-            X = np.zeros([n,*self.x.shape])
-            Y = np.zeros([n,*self.y.shape])
+            X = np.empty([n,*y.shape])
+            Y = np.empty([n,*y.shape])
 
-            X[0] = self.x
-            Y[0] = self.y
-
-            t = time.time()
-            for i in range(1,int(n)):
-                self.x,self.y = self.maping()
-                X[i] = self.x
-                Y[i] = self.y
-                if i%(n//10)==0:
-                    print('{:.0f}% done iterating'.format(i/n*100, time.time()-t))
-                    t = time.time()
-        if nosave:
-            t = time.time()
-            for i in range(1,int(n)):
-                self.x,self.y = self.maping()
-                if i%(n//10)==0:
-                    print('{:.0f}% done iterating'.format(i/n*100, time.time()-t))
-                    t = time.time()
-            X = x
-            Y = y
+            X, Y = _repeatmap_save(self.x,self.y,self.l,self.a, n,X,Y)
+        else:
+            X = 0.0
+            Y = 0.0
+            X, Y = _repeatmap_nosave(self.x,self.y,self.l,self.a, n)
         return X,Y
     
     
