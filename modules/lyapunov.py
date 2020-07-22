@@ -5,8 +5,7 @@ import xarray as xr
 import time
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
-from numba import njit, cuda
-import cupy as cp
+from numba import njit
 
 
 chaos = np.loadtxt('data/chaos_al.dat')
@@ -16,11 +15,9 @@ wild_chaos = np.loadtxt('data/wildchaos_al.dat')
 @njit(parallel=True,fastmath=True)
 def _maping(x,y,l,a):
     """Applies one itteration of the map."""
-    z = x + y*1j
-    z1 = z.copy()
-    z1 = (1-l+l*np.abs(z)**a)*((z)/(np.abs(z)))**2 + 1
-    # z1[z == 0] = 0
-    return np.real(z1), np.imag(z1)
+    newx = (x**2 *(l* ((x**2 + y**2)**(a/2) - 1) + 2) - l * y**2 *((x**2 + y**2)**(a/2) - 1))/(x**2 + y**2) 
+    newy = (2 * x* y *(l* ((x**2 + y**2)**(a/2) - 1) + 1))/(x**2 + y**2)
+    return newx, newy
 
 @njit(fastmath=True)
 def _repeatmap_save(x,y,l,a, n,X,Y):
@@ -42,6 +39,13 @@ def _repeatmap_nosave(x,y,l,a, n):
     newy = y
     return newx,newy
 
+@njit(fastmath=True)
+def _jacobian(x,y,l,a,J):
+    J[...,0,0] = x*a*l*(x**2+y**2)**(a/2-2)*(x**2-y**2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2) -2*x*(x**2-y**2)/(x**2+y**2)**2)
+    J[...,0,1] = y*a*l*(x**2+y**2)**(a/2-2)*(x**2-y**2) + (1-l+l*(x**2+y**2)**(a/2))*(-2*y/(x**2+y**2) -2*y*(x**2-y**2)/(x**2+y**2)**2)
+    J[...,1,0] = 2*y*x**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*y/(x**2+y**2)-4*x**2*y/(x**2+y**2)**2)
+    J[...,1,1] = 2*x*y**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2)-4*y**2*x/(x**2+y**2)**2)
+    return J
 
 
 
@@ -57,17 +61,25 @@ class system:
         self.n_attractor = n_attractor
         
         print('Iterating over the transient of {:.0f} steps'.format(n_transient))
+        t = time.time()
         X, Y = self.repeatmap(n = self.n_transient, nosave = True)
-        
+        print('    Done in {:.2f} s'.format(time.time() - t))
+
         print('Iterating over the attractor of {:.0f} steps'.format(n_attractor))
+        t = time.time()
         self.X_attractor, self.Y_attractor = self.repeatmap(x=X,y=Y,n=int(n_attractor), nosave = False)
-        
+        print('    Done in {:.2f} s'.format(time.time() - t))
+
         print('Generating initial conditions')
+        t = time.time()
         self.phi = np.random.uniform(0,2*np.pi,list(self.X_attractor.shape)[1:])
         self.E = np.array([[np.cos(self.phi),-np.sin(self.phi)],[np.sin(self.phi),np.cos(self.phi)]])
-        
+        print('    Done in {:.2f} s'.format(time.time() - t))
+
         print('Calculating the Jacobian Matrix for each point')
+        t = time.time()
         self.J = self.jacobian(self.X_attractor,self.Y_attractor,self.l,self.a)
+        print('    Done in {:.2f} s'.format(time.time() - t))
         print('System set up for analysis')
 
     # def maping(self):
@@ -84,13 +96,7 @@ class system:
         """Computes the Jacobian of the map."""
         J = np.zeros([*x.shape,2,2])
 
-        J[...,0,0] = x*a*l*(x**2+y**2)**(a/2-2)*(x**2-y**2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2) -2*x*(x**2-y**2)/(x**2+y**2)**2)
-
-        J[...,0,1] = y*a*l*(x**2+y**2)**(a/2-2)*(x**2-y**2) + (1-l+l*(x**2+y**2)**(a/2))*(-2*y/(x**2+y**2) -2*y*(x**2-y**2)/(x**2+y**2)**2)
-
-        J[...,1,0] = 2*y*x**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*y/(x**2+y**2)-4*x**2*y/(x**2+y**2)**2)
-
-        J[...,1,1] = 2*x*y**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2)-4*y**2*x/(x**2+y**2)**2)
+        J = _jacobian(x,y,l,a,J)
 
         return J
     
