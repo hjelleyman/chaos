@@ -6,7 +6,6 @@ import time
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 from numba import njit, cuda
-import cupy as cp
 
 
 chaos = np.loadtxt('data/chaos_al.dat')
@@ -16,34 +15,41 @@ wild_chaos = np.loadtxt('data/wildchaos_al.dat')
 @njit(parallel=True,fastmath=True)
 def _maping(x,y,l,a):
 	"""Applies one itteration of the map."""
-	z = x + y*1j
-	z1 = z.copy()
-	z1 = (1-l+l*np.abs(z)**a)*((z)/(np.abs(z)))**2 + 1
-	# z1[z == 0] = 0
-	return np.real(z1), np.imag(z1)
+	newx = (x**2 *(l* ((x**2 + y**2)**(a/2) - 1) + 2) - l * y**2 *((x**2 + y**2)**(a/2) - 1))/(x**2 + y**2) 
+	newy = (2 * x* y *(l* ((x**2 + y**2)**(a/2) - 1) + 1))/(x**2 + y**2)
+	return newx, newy
 
 @njit(fastmath=True)
 def _repeatmap_save(x,y,l,a, n,X,Y):
 	X[0] = x
 	Y[0] = y
 	for i in range(1,int(n)):
-		x,y = _maping(x,y,l,a)
+		newx = (x**2 *(l* ((x**2 + y**2)**(a/2) - 1) + 2) - l * y**2 *((x**2 + y**2)**(a/2) - 1))/(x**2 + y**2) 
+		newy = (2 * x* y *(l* ((x**2 + y**2)**(a/2) - 1) + 1))/(x**2 + y**2)
+		x = newx
+		y = newy
 		X[i] = x
 		Y[i] = y
 	newx = X
 	newy = Y
 	return newx,newy
 
-@cuda.jit
-def _repeatmap_nosave(x,y,l,a, n,newx, newy):
-	start = cuda.grid(1)
-	stride = cuda.gridsize(1)
-	for i in range(start, x.shape[0], stride):
+@njit(parallel=True,fastmath=True)
+def _repeatmap_nosave(x,y,l,a, n, newx,newy):
+	for i in range(1,int(n)):
 		newx = (x**2 *(l* ((x**2 + y**2)**(a/2) - 1) + 2) - l * y**2 *((x**2 + y**2)**(a/2) - 1))/(x**2 + y**2) 
 		newy = (2 * x* y *(l* ((x**2 + y**2)**(a/2) - 1) + 1))/(x**2 + y**2)
-	
+		x = newx
+		y = newy
 	return newx,newy
 
+@njit(fastmath=True)
+def _jacobian(x,y,l,a,J):
+	J[...,0,0] = x*a*l*(x**2+y**2)**(a/2-2)*(x**2-y**2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2) -2*x*(x**2-y**2)/(x**2+y**2)**2)
+	J[...,0,1] = y*a*l*(x**2+y**2)**(a/2-2)*(x**2-y**2) + (1-l+l*(x**2+y**2)**(a/2))*(-2*y/(x**2+y**2) -2*y*(x**2-y**2)/(x**2+y**2)**2)
+	J[...,1,0] = 2*y*x**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*y/(x**2+y**2)-4*x**2*y/(x**2+y**2)**2)
+	J[...,1,1] = 2*x*y**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2)-4*y**2*x/(x**2+y**2)**2)
+	return J
 
 
 
@@ -120,15 +126,15 @@ class system:
 
 			X, Y = _repeatmap_save(self.x,self.y,self.l,self.a, n,X,Y)
 		else:
-			x = cp.asarray(self.x).flatten()
-			y = cp.asarray(self.y).flatten()
-			l = cp.asarray(self.l).flatten()
-			a = cp.asarray(self.a).flatten()
+			x = self.x.flatten()
+			y = self.y.flatten()
+			l = self.l.flatten()
+			a = self.a.flatten()
 			newx = x.copy()
 			newy = y.copy()
 			_repeatmap_nosave(x,y,l,a,n, newx,newy)
-			X = cp.asnumpy(newx).reshape(*self.x.shape)
-			Y = cp.asnumpy(newy).reshape(*self.x.shape)
+			X = newx.reshape(*self.x.shape)
+			Y = newy.reshape(*self.x.shape)
 		return X,Y
 	
 	
