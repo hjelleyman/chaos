@@ -62,13 +62,15 @@ def _jacobian(x,y,l,a,J):
     blockspergrid = (x_flat.shape[0] + (threadsperblock - 1)) // threadsperblock
 
     _j1[blockspergrid, threadsperblock](x_flat,y_flat,l_flat,a_flat,J0)
-    _j2[blockspergrid, threadsperblock](x_flat,y_flat,l_flat,a_flat,J0)
-    _j3[blockspergrid, threadsperblock](x_flat,y_flat,l_flat,a_flat,J0)
-    _j4[blockspergrid, threadsperblock](x_flat,y_flat,l_flat,a_flat,J0)
-    # J[...,0,0] = x*a*l*(x**2+y**2)**(a/2-2)*(x**2-y**2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2) -2*x*(x**2-y**2)/(x**2+y**2)**2)
-    # J[...,0,1] = y*a*l*(x**2+y**2)**(a/2-2)*(x**2-y**2) + (1-l+l*(x**2+y**2)**(a/2))*(-2*y/(x**2+y**2) -2*y*(x**2-y**2)/(x**2+y**2)**2)
-    # J[...,1,0] = 2*y*x**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*y/(x**2+y**2)-4*x**2*y/(x**2+y**2)**2)
-    # J[...,1,1] = 2*x*y**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2)-4*y**2*x/(x**2+y**2)**2)
+    _j2[blockspergrid, threadsperblock](x_flat,y_flat,l_flat,a_flat,J1)
+    _j3[blockspergrid, threadsperblock](x_flat,y_flat,l_flat,a_flat,J2)
+    _j4[blockspergrid, threadsperblock](x_flat,y_flat,l_flat,a_flat,J3)
+
+    J[...,0,0] = J0.reshape(shape[:-2])
+    J[...,0,1] = J1.reshape(shape[:-2])
+    J[...,1,0] = J2.reshape(shape[:-2])
+    J[...,1,1] = J3.reshape(shape[:-2])
+
     return J
 
 @cuda.jit
@@ -119,6 +121,22 @@ def _j4(X,Y,L,A,J):
             l = L[i]
             a = A[i]
             J[pos,i] = 2*x*y**2*a*l*(x**2+y**2)**(a/2-2) + (1-l+l*(x**2+y**2)**(a/2))*(2*x/(x**2+y**2)-4*y**2*x/(x**2+y**2)**2)
+
+
+
+@cuda.jit
+def angle_matrix_rotations(jacobian_matrix, angle_matrix, out):
+    """Perform square matrix multiplication of C = A * B
+    """
+    n = cuda.grid(1)
+    if n < angle_matrix.shape[2]:
+        for i in range(2):
+            for j in range(2):
+                for k in range(2):
+                    jacobian = jacobian_matrix[n,i,k]
+                    angle = angle_matrix[k,j,n]
+                    out[i,j,n] += jacobian * angle
+
 
 class system:
     """system object which can contain coordinates and things like that."""
@@ -225,10 +243,19 @@ class system:
         for t in range(n_attractor):
 
             # Subsetting the jacobian matrix
-            jacobian_matrix = J[t]
+            jacobian_matrix = J[t].copy()
+
+            j_flat = jacobian_matrix.reshape(np.prod(jacobian_matrix.shape[:-2]),2,2)
+            a_flat = angle_matrix.reshape(2,2,np.prod(angle_matrix.shape[2:]))
 
             # rotating the angle matrix
-            angle_matrix = np.einsum('xylaij,jkxyla->ikxyla',jacobian_matrix, angle_matrix)
+            threadsperblock = 32 
+            blockspergrid = (j_flat.shape[0] + (threadsperblock - 1)) // threadsperblock
+            out = a_flat.copy()
+            angle_matrix_rotations[blockspergrid, threadsperblock](j_flat, a_flat, out)
+            a_flat = out
+
+            angle_matrix = a_flat.reshape(angle_matrix.shape)
 
             # Calculating the Lyapunov Exponents
             first_exponent[t] = np.linalg.norm(angle_matrix[:,0], axis=0)

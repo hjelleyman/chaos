@@ -12,8 +12,8 @@ lmin = 0.1
 lmax = 1
 da = 0.01
 dl = 0.01 
-ablocks = 15
-lblocks = 15
+ablocks = 12
+lblocks = 12
 
 x = np.linspace(-10,10,10)
 y = np.linspace(-10,10,10)
